@@ -1,0 +1,13 @@
+# FastAPI 与 ASGI 服务
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# LangGraph / LangChain 生态：Agent 编排、工具调用、模型接入的核心
+langgraph==0.2.60
+langchain==0.3.14
+langchain-core==0.3.29
+langchain-openai==0.2.14
+
+# 环境变量、数据校验
+python-dotenv==1.0.1
+pydantic==2.10.4

@@ -1,0 +1,17 @@
+# ── Python ──
+server/.venv/
+__pycache__/
+*.pyc
+server/.env
+
+# ── Node / Next.js ──
+web/node_modules/
+web/.next/
+web/out/
+web/.env.local
+
+# ── 系统 / 编辑器 ──
+.DS_Store
+*.log
+.vscode/
+.idea/
