@@ -1,8 +1,26 @@
 # Vercel Python 部署配置。
 #
-# Vercel 会自动识别 FastAPI 并把整个 app 作为单个 Serverless Function 运行、
-# 把所有请求路径原样转发给它（不改写路径）。这里只做一件事：用 entrypoint
-# 显式锁定入口为 app/main.py 里的顶层变量 `app`，消除自动探测的歧义
-# （避免它在多个候选文件间猜错），部署行为可预测。
+# Vercel 检测到 pyproject.toml 时用 uv 安装依赖，因此这里必须提供标准的
+# [project] 表（否则 uv 报 "No `project` table found" 直接失败）。
+# 依赖直接列在这里，作为 requirements.txt 的等价来源。
+#
+# [tool.vercel] 的 entrypoint 显式锁定 ASGI 入口为 app/main.py 里的顶层
+# 变量 `app`，消除自动探测歧义。Vercel 会把整个 FastAPI app 作为单个
+# Serverless Function 运行，并把请求路径原样转发（不改写路径）。
+[project]
+name = "agent-studio-server"
+version = "1.0.0"
+description = "Agent Studio backend — three LangGraph agent patterns over a shared SSE protocol"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "langgraph==0.2.60",
+    "langchain-core==0.3.29",
+    "langchain-openai==0.2.14",
+    "python-dotenv==1.0.1",
+    "pydantic==2.10.4",
+]
+
 [tool.vercel]
 entrypoint = "app.main:app"
