@@ -4,6 +4,8 @@
 
 Most "AI agent" demos are a thin wrapper around a chat completion call. This one shows the part that actually matters in production: **turning opaque agent execution into observable, traceable, controllable state** — planning, tool calls, parallel execution, and streaming, all rendered live.
 
+![Agent Studio demo](docs/demo.gif)
+
 Three agent patterns, one clean architecture, one shared streaming protocol:
 
 | Mode | Pattern | What it demonstrates |
