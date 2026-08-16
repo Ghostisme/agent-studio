@@ -1,0 +1,8 @@
+# Vercel Python 部署配置。
+#
+# Vercel 会自动识别 FastAPI 并把整个 app 作为单个 Serverless Function 运行、
+# 把所有请求路径原样转发给它（不改写路径）。这里只做一件事：用 entrypoint
+# 显式锁定入口为 app/main.py 里的顶层变量 `app`，消除自动探测的歧义
+# （避免它在多个候选文件间猜错），部署行为可预测。
+[tool.vercel]
+entrypoint = "app.main:app"
