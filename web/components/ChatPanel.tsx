@@ -13,9 +13,12 @@ import { useAgentStore } from "@/lib/store";
 
 /** 各模式的示例问题，降低用户上手成本，也方便你录 demo 时快速触发。 */
 const EXAMPLES: Record<string, string[]> = {
-  support: ["你们的退货政策是什么？", "帮我查一下订单 SO202608001 的物流"],
-  data: ["哪个品类的总销售额最高？", "各区域的销量分布如何？"],
-  research: ["AI Agent 在企业客服中的应用现状", "多 Agent 协作系统的关键技术挑战"],
+  support: ["What is your return policy?", "Track my order SO202608001"],
+  data: ["Which category has the highest total sales?", "How do sales break down by region?"],
+  research: [
+    "Current state of AI agents in enterprise customer service",
+    "Key technical challenges in multi-agent systems",
+  ],
 };
 
 export default function ChatPanel() {
@@ -40,7 +43,7 @@ export default function ChatPanel() {
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && (
           <div className="space-y-3 pt-8 text-center">
-            <p className="text-sm text-zinc-400">试试这些问题：</p>
+            <p className="text-sm text-zinc-400">Try one of these:</p>
             {EXAMPLES[mode]?.map((q) => (
               <button
                 key={q}
@@ -62,7 +65,7 @@ export default function ChatPanel() {
                   : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100"
               }`}
             >
-              {m.content || (running && i === messages.length - 1 ? "思考中…" : m.content)}
+              {m.content || (running && i === messages.length - 1 ? "Thinking…" : m.content)}
             </div>
           </div>
         ))}
@@ -81,7 +84,7 @@ export default function ChatPanel() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend(input)}
-            placeholder={running ? "Agent 执行中…" : "输入你的问题…"}
+            placeholder={running ? "Agent is running…" : "Ask a question…"}
             disabled={running}
             className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900"
           />
@@ -90,7 +93,7 @@ export default function ChatPanel() {
             disabled={running || !input.trim()}
             className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-40"
           >
-            发送
+            Send
           </button>
         </div>
       </div>

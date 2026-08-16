@@ -69,17 +69,17 @@ async def list_modes() -> dict:
             {
                 "key": "support",
                 "name": "Customer Support Agent",
-                "desc": "RAG 知识检索 + 工具调用的客服机器人",
+                "desc": "RAG knowledge retrieval + tool-calling support bot",
             },
             {
                 "key": "data",
                 "name": "Data Analysis Agent",
-                "desc": "自然语言 → SQL → 执行 → 洞察",
+                "desc": "Natural language → SQL → execute → insight",
             },
             {
                 "key": "research",
                 "name": "Multi-Agent Research",
-                "desc": "规划 → 并行研究 → 汇总的多 Agent 协作",
+                "desc": "Plan → parallel research → synthesize",
             },
         ]
     }
@@ -93,7 +93,7 @@ async def _event_stream(req: ChatRequest) -> AsyncIterator[str]:
     """
     handler = _MODES.get(req.mode)
     if handler is None:
-        yield error(f"未知模式：{req.mode}").to_sse()
+        yield error(f"Unknown mode: {req.mode}").to_sse()
         yield done().to_sse()
         return
 
@@ -101,7 +101,7 @@ async def _event_stream(req: ChatRequest) -> AsyncIterator[str]:
         async for ev in handler(req.message, req.history):
             yield ev.to_sse()
     except Exception as e:  # noqa: BLE001 - demo 中统一兜底，避免裸 500
-        yield error(f"执行出错：{e}").to_sse()
+        yield error(f"Execution error: {e}").to_sse()
         yield done().to_sse()
 
 

@@ -28,16 +28,16 @@ from ..llm import get_llm
 # 文档 + 关键词匹配模拟，避免引入向量库依赖，让客户能一键跑起来。
 # 注释此处说明「真实实现会替换成什么」，体现你知道生产该怎么做。
 _KNOWLEDGE_BASE = {
-    "退货政策": "本店支持 7 天无理由退货，商品需保持完好、不影响二次销售。生鲜类目不支持退货。",
-    "运费规则": "订单满 99 元包邮，未满收取 10 元运费。偏远地区（新疆/西藏）加收 15 元。",
-    "会员权益": "PLUS 会员享全场 95 折、每月 3 张免运费券、专属客服通道。",
-    "配送时效": "现货商品 48 小时内发货，一般 2-4 天送达；预售商品以商品页标注时间为准。",
+    "return policy": "We offer a 7-day no-questions-asked return. Items must be unused and in resalable condition. Fresh/perishable goods are non-returnable.",
+    "shipping fees": "Free shipping on orders over $99; a flat $10 fee applies below that. Remote regions incur an extra $15.",
+    "membership": "PLUS members get 5% off store-wide, 3 free-shipping vouchers per month, and a priority support channel.",
+    "delivery time": "In-stock items ship within 48 hours and arrive in 2-4 days. Pre-order items ship per the date shown on the product page.",
 }
 
 # 模拟订单数据，供工具查询。真实项目会调后端订单服务 API。
 _ORDERS = {
-    "SO202608001": {"status": "已发货", "carrier": "顺丰", "tracking": "SF1234567890"},
-    "SO202608002": {"status": "备货中", "carrier": None, "tracking": None},
+    "SO202608001": {"status": "Shipped", "carrier": "FedEx", "tracking": "FX1234567890"},
+    "SO202608002": {"status": "Preparing", "carrier": None, "tracking": None},
 }
 
 
@@ -54,7 +54,8 @@ def search_knowledge_base(query: str) -> str:
         命中的知识条目文本；未命中时返回提示语。
     """
     # 简单关键词匹配模拟 RAG 召回。生产环境替换为向量相似度检索。
-    hits = [content for key, content in _KNOWLEDGE_BASE.items() if key in query or query in content]
+    q = query.lower()
+    hits = [content for key, content in _KNOWLEDGE_BASE.items() if key in q or q in content.lower()]
     if not hits:
         # 未命中时回退到全量拼接，让 LLM 自己判断，避免直接答「不知道」。
         hits = list(_KNOWLEDGE_BASE.values())
@@ -73,16 +74,16 @@ def query_order(order_id: str) -> str:
     """
     order = _ORDERS.get(order_id.strip().upper())
     if not order:
-        return f"未查询到订单 {order_id}，请核对订单号。"
-    if order["status"] == "已发货":
-        return f"订单 {order_id} 状态：{order['status']}，{order['carrier']} 承运，运单号 {order['tracking']}。"
-    return f"订单 {order_id} 状态：{order['status']}。"
+        return f"No order found for {order_id}. Please double-check the order number."
+    if order["status"] == "Shipped":
+        return f"Order {order_id}: {order['status']} via {order['carrier']}, tracking number {order['tracking']}."
+    return f"Order {order_id}: {order['status']}."
 
 
-_SYSTEM_PROMPT = """你是一个专业的电商客服助手。请遵守：
-1. 涉及政策（退货/运费/会员/配送）时，务必先调用 search_knowledge_base 检索，依据检索结果回答，不要编造。
-2. 涉及具体订单时，调用 query_order 查询实时状态。
-3. 回答简洁、友好、准确。用中文回答。"""
+_SYSTEM_PROMPT = """You are a professional e-commerce support assistant. Rules:
+1. For policy questions (returns/shipping/membership/delivery), always call search_knowledge_base first and answer strictly from the results — never make things up.
+2. For specific orders, call query_order to fetch the live status.
+3. Keep answers concise, friendly, and accurate. Always respond in English."""
 
 
 async def run(message: str, history: list[dict]) -> AsyncIterator[StreamEvent]:
@@ -107,7 +108,7 @@ async def run(message: str, history: list[dict]) -> AsyncIterator[StreamEvent]:
         messages.append((role, turn["content"]))
     messages.append(("user", message))
 
-    yield node_start("agent", "客服 Agent 思考中")
+    yield node_start("agent", "Support agent thinking")
 
     final_text = ""
     # astream_events 是 LangGraph/LangChain 的统一事件流接口，

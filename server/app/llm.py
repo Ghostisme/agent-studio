@@ -30,7 +30,7 @@ def get_llm(streaming: bool = True, temperature: float = 0.3) -> ChatOpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or api_key == "sk-your-key-here":
         raise RuntimeError(
-            "OPENAI_API_KEY 未配置。请复制 .env.example 为 .env 并填入真实 key。"
+            "OPENAI_API_KEY is not set. Copy .env.example to .env and fill in a real key."
         )
 
     return ChatOpenAI(

@@ -32,7 +32,7 @@ export async function streamChat(
     signal,
   });
 
-  if (!resp.body) throw new Error("响应无数据流");
+  if (!resp.body) throw new Error("Response has no data stream");
 
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();

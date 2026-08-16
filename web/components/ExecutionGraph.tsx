@@ -129,7 +129,7 @@ export default function ExecutionGraph({ nodes }: { nodes: ExecNode[] }) {
   if (nodes.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-zinc-400">
-        Agent 执行链路将在这里实时展示
+        The agent&apos;s execution graph will appear here in real time
       </div>
     );
   }

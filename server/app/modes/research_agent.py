@@ -46,9 +46,9 @@ async def _plan(topic: str) -> list[str]:
     """规划节点：把主题拆解成 2-3 个可独立研究的子问题。"""
     llm = get_llm(streaming=False, temperature=0.4)
     prompt = (
-        f"研究主题：{topic}\n\n"
-        "请把它拆解成 2-3 个彼此独立、覆盖全面的子问题，"
-        "每行一个，不要编号，不要多余文字。"
+        f"Research topic: {topic}\n\n"
+        "Break it down into 2-3 independent, well-covering sub-questions. "
+        "One per line, no numbering, no extra text."
     )
     resp = await llm.ainvoke([("user", prompt)])
     subtasks = [line.strip("-• ").strip() for line in resp.content.splitlines() if line.strip()]
@@ -58,7 +58,7 @@ async def _plan(topic: str) -> list[str]:
 async def _research_one(subtask: str) -> str:
     """研究节点（单个子问题）：检索并整理出该子问题的结论。"""
     llm = get_llm(streaming=False, temperature=0.5)
-    prompt = f"针对这个子问题做简要研究，给出 3-5 条要点结论：\n{subtask}"
+    prompt = f"Briefly research this sub-question and give 3-5 key findings:\n{subtask}"
     resp = await llm.ainvoke([("user", prompt)])
     return resp.content.strip()
 
@@ -79,7 +79,7 @@ async def run(message: str, history: list[dict]) -> AsyncIterator[StreamEvent]:
     topic = message.strip()
 
     # ── 阶段 1：规划 ──
-    yield node_start("planner", "规划 Agent 拆解任务")
+    yield node_start("planner", "Planner decomposing task")
     subtasks = await _plan(topic)
     for i, st in enumerate(subtasks):
         # 把每个子任务作为一次「工具调用」展示，前端可列出拆解结果。
@@ -92,7 +92,7 @@ async def run(message: str, history: list[dict]) -> AsyncIterator[StreamEvent]:
     # 完成一个就发对应的 result 和 node_end。
     findings: list[str] = []
     for i, st in enumerate(subtasks):
-        yield node_start(f"researcher_{i}", f"研究 Agent #{i + 1}")
+        yield node_start(f"researcher_{i}", f"Researcher #{i + 1}")
 
     async def _wrapped(idx: int, st: str) -> tuple[int, str]:
         """包一层，返回 (下标, 结论)，便于并行完成后对号入座。"""
@@ -109,12 +109,12 @@ async def run(message: str, history: list[dict]) -> AsyncIterator[StreamEvent]:
     findings = [results[i] for i in range(len(subtasks))]
 
     # ── 阶段 3：汇总 ──
-    yield node_start("synthesizer", "汇总 Agent 生成报告")
+    yield node_start("synthesizer", "Synthesizer writing report")
     synth_llm = get_llm(streaming=True, temperature=0.4)
-    combined = "\n\n".join(f"【子问题 {i + 1}】{subtasks[i]}\n{findings[i]}" for i in range(len(subtasks)))
+    combined = "\n\n".join(f"[Sub-question {i + 1}] {subtasks[i]}\n{findings[i]}" for i in range(len(subtasks)))
     synth_prompt = (
-        f"研究主题：{topic}\n\n以下是各子问题的研究结论：\n{combined}\n\n"
-        "请综合成一份结构清晰的中文研究简报，包含：核心结论、要点、简短总结。"
+        f"Research topic: {topic}\n\nHere are the findings for each sub-question:\n{combined}\n\n"
+        "Synthesize a well-structured research brief in English, with: key conclusion, main points, and a short summary."
     )
     report = ""
     async for chunk in synth_llm.astream([("user", synth_prompt)]):

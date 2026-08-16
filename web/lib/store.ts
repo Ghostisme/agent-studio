@@ -158,7 +158,7 @@ function applyEvent(
     }
 
     case "error":
-      set(() => ({ error: ev.data?.message ?? "未知错误" }));
+      set(() => ({ error: ev.data?.message ?? "Unknown error" }));
       break;
 
     case "done":

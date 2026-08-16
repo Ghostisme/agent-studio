@@ -33,14 +33,14 @@ _SCHEMA = """CREATE TABLE sales (
 );"""
 
 _SEED = [
-    (1, "数码", "无线耳机", "华东", 12800.0, 40, "2026-07-02"),
-    (2, "数码", "机械键盘", "华南", 8600.0, 20, "2026-07-05"),
-    (3, "家居", "记忆棉枕", "华东", 4200.0, 60, "2026-07-08"),
-    (4, "家居", "香薰机", "华北", 3100.0, 50, "2026-07-11"),
-    (5, "服饰", "运动卫衣", "华南", 9900.0, 90, "2026-07-15"),
-    (6, "数码", "无线耳机", "华北", 15600.0, 48, "2026-07-18"),
-    (7, "服饰", "牛仔裤", "华东", 7300.0, 70, "2026-07-21"),
-    (8, "家居", "记忆棉枕", "华南", 5600.0, 80, "2026-07-25"),
+    (1, "Electronics", "Wireless Earbuds", "East", 12800.0, 40, "2026-07-02"),
+    (2, "Electronics", "Mechanical Keyboard", "South", 8600.0, 20, "2026-07-05"),
+    (3, "Home", "Memory Foam Pillow", "East", 4200.0, 60, "2026-07-08"),
+    (4, "Home", "Aroma Diffuser", "North", 3100.0, 50, "2026-07-11"),
+    (5, "Apparel", "Sports Hoodie", "South", 9900.0, 90, "2026-07-15"),
+    (6, "Electronics", "Wireless Earbuds", "North", 15600.0, 48, "2026-07-18"),
+    (7, "Apparel", "Jeans", "East", 7300.0, 70, "2026-07-21"),
+    (8, "Home", "Memory Foam Pillow", "South", 5600.0, 80, "2026-07-25"),
 ]
 
 
@@ -69,30 +69,30 @@ def _is_safe_select(sql: str) -> bool:
 def _run_sql(sql: str) -> str:
     """在演示数据库上执行只读 SQL，返回格式化的结果表。"""
     if not _is_safe_select(sql):
-        return "拒绝执行：仅允许只读 SELECT 查询。"
+        return "Rejected: only read-only SELECT queries are allowed."
     conn = _build_db()
     try:
         cur = conn.execute(sql)
         cols = [d[0] for d in cur.description]
         rows = cur.fetchall()
         if not rows:
-            return "查询无结果。"
+            return "The query returned no rows."
         # 拼成简单文本表格，交给 LLM 解读。
         lines = [" | ".join(cols)]
         lines += [" | ".join(str(c) for c in row) for row in rows]
         return "\n".join(lines)
     except sqlite3.Error as e:
         # 把 SQL 错误回传给 Agent，让它有机会修正后重试。
-        return f"SQL 执行错误：{e}"
+        return f"SQL execution error: {e}"
     finally:
         conn.close()
 
 
-_SQL_PROMPT = f"""你是数据分析助手。数据库表结构如下：
+_SQL_PROMPT = f"""You are a data analysis assistant. The database schema is:
 {_SCHEMA}
 
-用户会用自然语言提问。你只需输出一条可执行的 SQLite SELECT 查询语句，
-不要输出任何解释、不要用 markdown 代码块包裹，直接输出 SQL。"""
+The user asks in natural language. Output exactly one executable SQLite SELECT
+statement — no explanation, no markdown code fences, just the raw SQL."""
 
 
 async def run(message: str, history: list[dict]) -> AsyncIterator[StreamEvent]:
@@ -113,7 +113,7 @@ async def run(message: str, history: list[dict]) -> AsyncIterator[StreamEvent]:
     llm = get_llm(streaming=False, temperature=0.0)  # 生成 SQL 要确定性，温度设 0
 
     # ── 节点 1：生成 SQL ──
-    yield node_start("sql_gen", "生成 SQL 查询")
+    yield node_start("sql_gen", "Generate SQL")
     sql_resp = await llm.ainvoke([("system", _SQL_PROMPT), ("user", message)])
     sql = sql_resp.content.strip()
     # 去掉可能残留的 markdown 代码块围栏。
@@ -122,18 +122,18 @@ async def run(message: str, history: list[dict]) -> AsyncIterator[StreamEvent]:
     yield node_end("sql_gen")
 
     # ── 节点 2：执行 SQL ──
-    yield node_start("execute", "执行查询")
+    yield node_start("execute", "Execute query")
     yield tool_call("execute", "run_sql", {"sql": sql})
     result = _run_sql(sql)
     yield tool_result("execute", "run_sql", result)
     yield node_end("execute")
 
     # ── 节点 3：解读结果 ──
-    yield node_start("insight", "生成分析洞察")
+    yield node_start("insight", "Generate insight")
     insight_llm = get_llm(streaming=True, temperature=0.3)
     insight_prompt = (
-        f"用户问题：{message}\n\n查询结果：\n{result}\n\n"
-        "请用简洁的中文总结数据洞察，指出关键结论。"
+        f"User question: {message}\n\nQuery result:\n{result}\n\n"
+        "Summarize the key insight concisely in English, highlighting the main takeaway."
     )
     final_text = ""
     async for chunk in insight_llm.astream([("user", insight_prompt)]):
