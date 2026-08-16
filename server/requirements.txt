@@ -2,9 +2,10 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 
-# LangGraph / LangChain 生态：Agent 编排、工具调用、模型接入的核心
+# LangGraph / LangChain 生态：Agent 编排、工具调用、模型接入的核心。
+# 注意：不引入 langchain 伞包——项目只用到 langgraph / langchain-core /
+# langchain-openai，砍掉伞包能大幅减小部署体积（Vercel 函数有 500MB 上限）。
 langgraph==0.2.60
-langchain==0.3.14
 langchain-core==0.3.29
 langchain-openai==0.2.14
 
