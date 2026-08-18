@@ -59,10 +59,11 @@ export default function Home() {
 
       {/* 主体：左对话 右执行图 */}
       <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-2">
-        <section className="border-r border-zinc-200 dark:border-zinc-800">
+        {/* overflow-hidden 确保 ChatPanel 内部的 flex-1 + overflow-y-auto 能正确滚动 */}
+        <section className="overflow-hidden border-r border-zinc-200 dark:border-zinc-800">
           <ChatPanel />
         </section>
-        <section className="hidden bg-white dark:bg-zinc-900 lg:block">
+        <section className="hidden overflow-hidden bg-white dark:bg-zinc-900 lg:block">
           <ExecutionGraph nodes={nodes} />
         </section>
       </div>

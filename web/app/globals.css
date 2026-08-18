@@ -24,3 +24,114 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Markdown 气泡内的排版样式 */
+.markdown-bubble h1 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0.75rem 0 0.5rem;
+  line-height: 1.4;
+}
+.markdown-bubble h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0.875rem 0 0.375rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+  line-height: 1.4;
+}
+.markdown-bubble h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.3rem;
+}
+.markdown-bubble p {
+  margin-bottom: 0.625rem;
+  line-height: 1.65;
+}
+.markdown-bubble p:last-child {
+  margin-bottom: 0;
+}
+.markdown-bubble ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.625rem;
+  line-height: 1.65;
+}
+.markdown-bubble ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin-bottom: 0.625rem;
+  line-height: 1.65;
+}
+.markdown-bubble li {
+  margin-bottom: 0.2rem;
+}
+.markdown-bubble code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82em;
+  background: rgba(128, 128, 128, 0.15);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+}
+.markdown-bubble pre {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  margin-bottom: 0.625rem;
+}
+.markdown-bubble pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85em;
+}
+.markdown-bubble blockquote {
+  border-left: 3px solid rgba(16, 185, 129, 0.5);
+  padding-left: 0.75rem;
+  color: inherit;
+  opacity: 0.8;
+  margin-bottom: 0.625rem;
+}
+.markdown-bubble strong {
+  font-weight: 600;
+}
+.markdown-bubble em {
+  font-style: italic;
+}
+.markdown-bubble hr {
+  border: none;
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+  margin: 0.875rem 0;
+}
+.markdown-bubble a {
+  color: #10b981;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.markdown-bubble table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.625rem;
+  font-size: 0.85em;
+}
+.markdown-bubble th,
+.markdown-bubble td {
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  padding: 0.3rem 0.6rem;
+  text-align: left;
+}
+.markdown-bubble th {
+  font-weight: 600;
+  background: rgba(128, 128, 128, 0.1);
+}
+
+/* dark mode 下 pre 背景加深一点 */
+@media (prefers-color-scheme: dark) {
+  .markdown-bubble pre {
+    background: rgba(0, 0, 0, 0.3);
+  }
+  .markdown-bubble code {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
