@@ -9,6 +9,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useAgentStore } from "@/lib/store";
 
 /** 各模式的示例问题，降低用户上手成本，也方便你录 demo 时快速触发。 */
@@ -58,15 +60,21 @@ export default function ChatPanel() {
 
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm ${
-                m.role === "user"
-                  ? "bg-emerald-500 text-white"
-                  : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100"
-              }`}
-            >
-              {m.content || (running && i === messages.length - 1 ? "Thinking…" : m.content)}
-            </div>
+            {m.role === "user" ? (
+              // 用户消息：简单气泡，保留换行即可
+              <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm text-white">
+                {m.content}
+              </div>
+            ) : (
+              // 助手消息：渲染 Markdown，气泡宽度放宽到 92% 以容纳长内容
+              <div className="markdown-bubble max-w-[92%] rounded-2xl bg-zinc-100 px-4 py-3 text-sm text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100">
+                {m.content ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                ) : running && i === messages.length - 1 ? (
+                  <span className="animate-pulse text-zinc-400">Thinking…</span>
+                ) : null}
+              </div>
+            )}
           </div>
         ))}
 
