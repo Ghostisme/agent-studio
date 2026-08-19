@@ -24,7 +24,7 @@ const EXAMPLES: Record<string, string[]> = {
 };
 
 export default function ChatPanel() {
-  const { mode, messages, running, error, send } = useAgentStore();
+  const { mode, messages, running, error, quotaExceeded, dismissQuotaToast, send } = useAgentStore();
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -33,14 +33,37 @@ export default function ChatPanel() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  // quota 超限后输入框也不可用，避免用户继续触发请求。
+  const inputDisabled = running || quotaExceeded;
+
   const handleSend = (text: string) => {
-    if (!text.trim() || running) return;
+    if (!text.trim() || inputDisabled) return;
     setInput("");
     void send(text);
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
+      {/* 余额不足 Toast —— 固定在右上角，不占布局空间 */}
+      {quotaExceeded && (
+        <div className="absolute right-4 top-4 z-50 flex max-w-xs items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-lg dark:border-amber-700/50 dark:bg-amber-950/60">
+          <span className="mt-0.5 text-amber-500">⚠</span>
+          <div className="flex-1 text-sm">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">Quota exceeded</p>
+            <p className="mt-0.5 text-amber-700 dark:text-amber-400">
+              Demo credit has run out. New conversations are disabled.
+            </p>
+          </div>
+          <button
+            onClick={dismissQuotaToast}
+            aria-label="Dismiss"
+            className="ml-1 text-amber-400 hover:text-amber-600 dark:hover:text-amber-200"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* 对话区 */}
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && (
@@ -92,14 +115,21 @@ export default function ChatPanel() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend(input)}
-            placeholder={running ? "Agent is running…" : "Ask a question…"}
-            disabled={running}
-            className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900"
+            placeholder={
+              quotaExceeded
+                ? "Demo quota exhausted — sending disabled"
+                : running
+                  ? "Agent is running…"
+                  : "Ask a question…"
+            }
+            disabled={inputDisabled}
+            className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900"
           />
           <button
             onClick={() => handleSend(input)}
-            disabled={running || !input.trim()}
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-40"
+            disabled={inputDisabled || !input.trim()}
+            title={quotaExceeded ? "Quota exceeded" : undefined}
+            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Send
           </button>
@@ -108,3 +138,4 @@ export default function ChatPanel() {
     </div>
   );
 }
+
