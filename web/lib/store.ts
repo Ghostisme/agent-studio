@@ -26,10 +26,13 @@ interface AgentState {
   nodes: ExecNode[]; // 当前这轮的执行图节点
   running: boolean; // 是否正在流式执行
   error: string | null;
+  /** 余额不足时置 true，触发右上角 toast 并禁用发送按钮。 */
+  quotaExceeded: boolean;
 
   setMode: (mode: string) => void;
   send: (text: string) => Promise<void>;
   reset: () => void;
+  dismissQuotaToast: () => void;
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -38,10 +41,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   nodes: [],
   running: false,
   error: null,
+  quotaExceeded: false,
 
   setMode: (mode) => set({ mode, messages: [], nodes: [], error: null }),
 
   reset: () => set({ messages: [], nodes: [], error: null }),
+
+  dismissQuotaToast: () => set({ quotaExceeded: false }),
 
   /**
    * 发送一条消息并流式接收 Agent 执行过程。
@@ -157,9 +163,17 @@ function applyEvent(
       break;
     }
 
-    case "error":
-      set(() => ({ error: ev.data?.message ?? "Unknown error" }));
+    case "error": {
+      const msg = ev.data?.message ?? "Unknown error";
+      // quota 错误单独处理：设 quotaExceeded 标志，不写入 error 字段，
+      // 避免在对话气泡里直接显示含中文的原始报错。
+      if (msg.includes("pre_consume_token_quota_failed") || msg.includes("配额不足")) {
+        set(() => ({ quotaExceeded: true }));
+      } else {
+        set(() => ({ error: msg }));
+      }
       break;
+    }
 
     case "done":
       // 流结束，running 态由 send 的 finally 统一收尾，这里无需处理。
