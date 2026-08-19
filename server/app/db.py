@@ -23,8 +23,13 @@ _pool: aiomysql.Pool | None = None
 
 
 async def init_pool() -> None:
-    """应用启动时调用：建立连接池并确保表存在。"""
+    """应用启动时调用：建立连接池并确保表存在。
+
+    Aiven 等托管 MySQL 要求 SSL，通过 MYSQL_SSL=true 环境变量开启。
+    ssl=True 让 aiomysql 使用系统 CA 验证服务端证书，无需额外证书文件。
+    """
     global _pool
+    ssl: bool | None = True if os.getenv("MYSQL_SSL", "").lower() == "true" else None
     _pool = await aiomysql.create_pool(
         host=os.getenv("MYSQL_HOST", "127.0.0.1"),
         port=int(os.getenv("MYSQL_PORT", "3306")),
@@ -35,6 +40,7 @@ async def init_pool() -> None:
         minsize=1,
         maxsize=5,
         charset="utf8mb4",
+        ssl=ssl,
     )
     await _ensure_table()
     logger.info("MySQL pool ready (host=%s db=%s)", os.getenv("MYSQL_HOST"), os.getenv("MYSQL_DB"))
