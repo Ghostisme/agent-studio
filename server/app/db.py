@@ -26,16 +26,19 @@ _pool: aiomysql.Pool | None = None
 async def init_pool() -> None:
     """应用启动时调用：建立连接池并确保表存在。
 
-    MYSQL_SSL=true 时启用 TLS 加密连接。
-    Aiven 使用自签名 CA，Vercel 环境无法访问证书文件，
-    因此跳过证书链验证（仍然加密传输，只是不校验服务端身份）。
+    MYSQL_SSL=true 时启用 TLS 加密连接，优先使用同目录的 aiven-ca.pem
+    做严格证书验证；若 CA 文件不存在则降级为跳过证书链校验（仍加密）。
     """
     global _pool
     ssl_ctx: ssl.SSLContext | None = None
     if os.getenv("MYSQL_SSL", "").lower() == "true":
+        ca_path = os.path.join(os.path.dirname(__file__), "aiven-ca.pem")
         ssl_ctx = ssl.create_default_context()
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = ssl.CERT_NONE
+        if os.path.exists(ca_path):
+            ssl_ctx.load_verify_locations(ca_path)
+        else:
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
     _pool = await aiomysql.create_pool(
         host=os.getenv("MYSQL_HOST", "127.0.0.1"),
         port=int(os.getenv("MYSQL_PORT", "3306")),
