@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
+import ssl
 
 import aiomysql
 
@@ -25,11 +26,16 @@ _pool: aiomysql.Pool | None = None
 async def init_pool() -> None:
     """应用启动时调用：建立连接池并确保表存在。
 
-    Aiven 等托管 MySQL 要求 SSL，通过 MYSQL_SSL=true 环境变量开启。
-    ssl=True 让 aiomysql 使用系统 CA 验证服务端证书，无需额外证书文件。
+    MYSQL_SSL=true 时启用 TLS 加密连接。
+    Aiven 使用自签名 CA，Vercel 环境无法访问证书文件，
+    因此跳过证书链验证（仍然加密传输，只是不校验服务端身份）。
     """
     global _pool
-    ssl: bool | None = True if os.getenv("MYSQL_SSL", "").lower() == "true" else None
+    ssl_ctx: ssl.SSLContext | None = None
+    if os.getenv("MYSQL_SSL", "").lower() == "true":
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
     _pool = await aiomysql.create_pool(
         host=os.getenv("MYSQL_HOST", "127.0.0.1"),
         port=int(os.getenv("MYSQL_PORT", "3306")),
@@ -40,7 +46,7 @@ async def init_pool() -> None:
         minsize=1,
         maxsize=5,
         charset="utf8mb4",
-        ssl=ssl,
+        ssl=ssl_ctx,
     )
     await _ensure_table()
     logger.info("MySQL pool ready (host=%s db=%s)", os.getenv("MYSQL_HOST"), os.getenv("MYSQL_DB"))
