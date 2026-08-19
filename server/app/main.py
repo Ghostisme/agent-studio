@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
@@ -20,6 +21,7 @@ from pydantic import BaseModel
 # 必须在导入依赖环境变量的模块前加载 .env。
 load_dotenv()
 
+from .db import init_pool, close_pool  # noqa: E402
 from .events import error, done  # noqa: E402
 from .guard import guard  # noqa: E402
 from .modes import data_agent, research_agent, support_agent  # noqa: E402
@@ -30,7 +32,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("main")
 
-app = FastAPI(title="Agent Studio", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期：启动时初始化 MySQL 连接池并加载黑名单，关闭时释放连接池。"""
+    await init_pool()
+    await guard.load_from_db()
+    yield
+    await close_pool()
+
+
+app = FastAPI(title="Agent Studio", version="1.0.0", lifespan=lifespan)
 
 # 允许前端跨域访问。CORS_ORIGINS 支持逗号分隔多个来源。
 _origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
@@ -88,16 +100,15 @@ async def ip_guard_middleware(request: Request, call_next):
     """
     ip = _get_client_ip(request)
 
-    # 已在黑名单：直接拒绝，不记录详细路径（避免日志轰炸）
+    # 快速内存检查：已封锁直接拒绝，避免触发任何 LLM 调用
     if guard.is_blocked(ip):
         return JSONResponse(status_code=403, content={"detail": "Forbidden"})
 
-    # 速率检测：超限时 record_and_check 内部已写 WARNING 日志
-    if guard.record_and_check(ip):
-        return JSONResponse(
-            status_code=429,
-            content={"detail": "Too many requests — your IP has been blocked"},
-        )
+    # 地理位置 + 速率检测（含自动封锁 + 异步持久化到 MySQL）
+    blocked, reason = await guard.check_and_record(ip)
+    if blocked:
+        status = 403 if "geo:" in reason else 429
+        return JSONResponse(status_code=status, content={"detail": "Forbidden"})
 
     logger.info("→ %s %s  ip=%s", request.method, request.url.path, ip)
     return await call_next(request)
