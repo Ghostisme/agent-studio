@@ -7,20 +7,28 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import AsyncIterator
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 # 必须在导入依赖环境变量的模块前加载 .env。
 load_dotenv()
 
 from .events import error, done  # noqa: E402
+from .guard import guard  # noqa: E402
 from .modes import data_agent, research_agent, support_agent  # noqa: E402
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+)
+logger = logging.getLogger("main")
 
 app = FastAPI(title="Agent Studio", version="1.0.0")
 
@@ -53,6 +61,84 @@ class ChatRequest(BaseModel):
     mode: str
     message: str
     history: list[dict] = []
+
+
+def _get_client_ip(request: Request) -> str:
+    """提取真实客户端 IP。
+
+    优先读取反向代理注入的 X-Forwarded-For 首部（取最左侧非私有 IP），
+    其次回退到直连 IP。部署在 Vercel/Nginx 前置代理时依赖此逻辑。
+    """
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # X-Forwarded-For: client, proxy1, proxy2  → 取第一个
+        return forwarded_for.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+@app.middleware("http")
+async def ip_guard_middleware(request: Request, call_next):
+    """IP 黑名单 + 速率限制中间件。
+
+    对每个入站请求：
+    1. 提取真实 IP。
+    2. 检查是否在黑名单内（直接 403）。
+    3. 记录请求并判断是否超速（自动加黑并 429）。
+    4. 放行时记录 INFO 日志，便于后续分析。
+    """
+    ip = _get_client_ip(request)
+
+    # 已在黑名单：直接拒绝，不记录详细路径（避免日志轰炸）
+    if guard.is_blocked(ip):
+        return JSONResponse(status_code=403, content={"detail": "Forbidden"})
+
+    # 速率检测：超限时 record_and_check 内部已写 WARNING 日志
+    if guard.record_and_check(ip):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many requests — your IP has been blocked"},
+        )
+
+    logger.info("→ %s %s  ip=%s", request.method, request.url.path, ip)
+    return await call_next(request)
+
+
+# ── 管理接口（建议生产环境用环境变量 ADMIN_TOKEN 保护） ────────────────────────
+_ADMIN_TOKEN: str = os.getenv("ADMIN_TOKEN", "")
+
+
+def _check_admin(request: Request) -> bool:
+    """简单的 Bearer Token 鉴权，ADMIN_TOKEN 为空时禁用管理接口。"""
+    if not _ADMIN_TOKEN:
+        return False
+    auth = request.headers.get("Authorization", "")
+    return auth == f"Bearer {_ADMIN_TOKEN}"
+
+
+@app.get("/api/admin/blocklist")
+async def get_blocklist(request: Request):
+    """查看当前黑名单。需要 Authorization: Bearer <ADMIN_TOKEN>。"""
+    if not _check_admin(request):
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    return {"blocked": guard.blocked_list()}
+
+
+@app.post("/api/admin/block/{ip}")
+async def block_ip(ip: str, request: Request):
+    """手动封锁指定 IP。需要 Authorization: Bearer <ADMIN_TOKEN>。"""
+    if not _check_admin(request):
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    guard.manual_block(ip)
+    return {"blocked": ip}
+
+
+@app.delete("/api/admin/block/{ip}")
+async def unblock_ip(ip: str, request: Request):
+    """解除封锁指定 IP。需要 Authorization: Bearer <ADMIN_TOKEN>。"""
+    if not _check_admin(request):
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    guard.manual_unblock(ip)
+    return {"unblocked": ip}
 
 
 @app.get("/api/health")
