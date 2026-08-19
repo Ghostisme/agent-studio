@@ -16,3 +16,9 @@ pydantic==2.10.4
 # IP 速率限制与封锁
 slowapi==0.1.9
 limits==3.13.0
+
+# MySQL 持久化（异步连接池）
+aiomysql==0.2.0
+
+# IP 地理位置查询（异步 HTTP）
+httpx==0.28.1
