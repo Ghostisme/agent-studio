@@ -20,6 +20,9 @@ dependencies = [
     "langchain-openai==0.2.14",
     "python-dotenv==1.0.1",
     "pydantic==2.10.4",
+    "aiomysql==0.2.0",
+    "httpx==0.28.1",
+    "cryptography==44.0.3",
 ]
 
 [tool.vercel]
