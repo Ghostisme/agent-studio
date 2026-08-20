@@ -25,6 +25,7 @@ from .db import init_pool, close_pool  # noqa: E402
 from .events import error, done  # noqa: E402
 from .guard import guard  # noqa: E402
 from .lang_guard import check_language_and_block  # noqa: E402
+from .abuse_detector import detector  # noqa: E402
 from .modes import data_agent, research_agent, support_agent  # noqa: E402
 
 logging.basicConfig(
@@ -207,16 +208,32 @@ async def _event_stream(req: ChatRequest) -> AsyncIterator[str]:
 async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
     """统一的流式对话接口。
 
-    在处理前先检测消息语言，若为中文则封禁 IP 并返回 403。
+    多层防护：
+    1. 语言检测 — 中文消息封禁
+    2. 滥用检测 — 规则引擎 + LLM 终审识别测试流量
+    3. 通过检测后正常处理
+
     返回 text/event-stream，前端用 EventSource 或 fetch+ReadableStream 消费。
     关闭 Nginx 缓冲（X-Accel-Buffering）以保证流式实时性。
     """
     ip = _get_client_ip(request)
+
+    # 第一层：语言检测
     blocked, reason = await check_language_and_block(ip, req.message)
     if blocked:
         return JSONResponse(
             status_code=403,
             content={"detail": f"Access denied: {reason}"}
+        )
+
+    # 第二层：滥用检测
+    is_abuse, abuse_reason = await detector.check_message(ip, req.message)
+    if is_abuse:
+        logger.warning("🚫 滥用检测封禁 IP=%s  原因=%s", ip, abuse_reason)
+        await guard.manual_block(ip, reason=abuse_reason)
+        return JSONResponse(
+            status_code=403,
+            content={"detail": f"Access denied: {abuse_reason}"}
         )
 
     return StreamingResponse(
