@@ -97,16 +97,19 @@ async def persist_block(
     country_code: str = "",
     auto: bool = True,
 ) -> None:
-    """将封锁记录写入 MySQL（幂等，已存在则更新时间和原因）。"""
+    """将封锁记录写入 MySQL（幂等，已存在则更新时间和原因）。
+
+    使用 MySQL 8.0+ 推荐的 AS 别名语法替代废弃的 VALUES() 函数。
+    """
     async with _pool.acquire() as conn:  # type: ignore[union-attr]
         async with conn.cursor() as cur:
             await cur.execute(
                 """
                 INSERT INTO ip_blocklist (ip, reason, country_code, auto_blocked)
-                VALUES (%s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s) AS new
                 ON DUPLICATE KEY UPDATE
-                    reason       = VALUES(reason),
-                    country_code = VALUES(country_code),
+                    reason       = new.reason,
+                    country_code = new.country_code,
                     blocked_at   = NOW()
                 """,
                 (ip, reason, country_code, 1 if auto else 0),
