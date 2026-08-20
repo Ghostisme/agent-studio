@@ -24,6 +24,7 @@ load_dotenv()
 from .db import init_pool, close_pool  # noqa: E402
 from .events import error, done  # noqa: E402
 from .guard import guard  # noqa: E402
+from .lang_guard import check_language_and_block  # noqa: E402
 from .modes import data_agent, research_agent, support_agent  # noqa: E402
 
 logging.basicConfig(
@@ -203,12 +204,21 @@ async def _event_stream(req: ChatRequest) -> AsyncIterator[str]:
 
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest) -> StreamingResponse:
+async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
     """统一的流式对话接口。
 
+    在处理前先检测消息语言，若为中文则封禁 IP 并返回 403。
     返回 text/event-stream，前端用 EventSource 或 fetch+ReadableStream 消费。
     关闭 Nginx 缓冲（X-Accel-Buffering）以保证流式实时性。
     """
+    ip = _get_client_ip(request)
+    blocked, reason = await check_language_and_block(ip, req.message)
+    if blocked:
+        return JSONResponse(
+            status_code=403,
+            content={"detail": f"Access denied: {reason}"}
+        )
+
     return StreamingResponse(
         _event_stream(req),
         media_type="text/event-stream",
