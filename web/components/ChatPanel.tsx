@@ -21,6 +21,10 @@ const EXAMPLES: Record<string, string[]> = {
     "Current state of AI agents in enterprise customer service",
     "Key technical challenges in multi-agent systems",
   ],
+  cost: [
+    "What is the capital of France?",
+    "Analyze the tradeoffs between microservices and a monolith",
+  ],
 };
 
 export default function ChatPanel() {

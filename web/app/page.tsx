@@ -13,11 +13,12 @@ import { useAgentStore } from "@/lib/store";
 import ChatPanel from "@/components/ChatPanel";
 import ExecutionGraph from "@/components/ExecutionGraph";
 
-/** 三种模式的展示信息。与后端 /api/modes 对齐，这里内联以避免首屏额外请求。 */
+/** 四种模式的展示信息。与后端 /api/modes 对齐，这里内联以避免首屏额外请求。 */
 const MODES = [
   { key: "support", name: "Customer Support", desc: "RAG + Tool Calling" },
   { key: "data", name: "Data Analysis", desc: "NL → SQL → Insight" },
   { key: "research", name: "Multi-Agent Research", desc: "Plan → Parallel → Synthesize" },
+  { key: "cost", name: "Cost Optimizer", desc: "Route + Cache + Meter" },
 ];
 
 export default function Home() {
