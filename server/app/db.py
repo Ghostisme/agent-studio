@@ -28,31 +28,37 @@ async def init_pool() -> None:
 
     MYSQL_SSL=true 时启用 TLS 加密连接，优先使用同目录的 aiven-ca.pem
     做严格证书验证；若 CA 文件不存在则降级为跳过证书链校验（仍加密）。
+
+    连接失败时优雅降级：不阻塞应用启动，agent 功能正常，IP guard 失效。
     """
     global _pool
-    ssl_ctx: ssl.SSLContext | None = None
-    if os.getenv("MYSQL_SSL", "").lower() == "true":
-        ca_path = os.path.join(os.path.dirname(__file__), "aiven-ca.pem")
-        ssl_ctx = ssl.create_default_context()
-        if os.path.exists(ca_path):
-            ssl_ctx.load_verify_locations(ca_path)
-        else:
-            ssl_ctx.check_hostname = False
-            ssl_ctx.verify_mode = ssl.CERT_NONE
-    _pool = await aiomysql.create_pool(
-        host=os.getenv("MYSQL_HOST", "127.0.0.1"),
-        port=int(os.getenv("MYSQL_PORT", "3306")),
-        user=os.getenv("MYSQL_USER", "root"),
-        password=os.getenv("MYSQL_PASSWORD", ""),
-        db=os.getenv("MYSQL_DB", "agent_studio"),
-        autocommit=True,
-        minsize=1,
-        maxsize=5,
-        charset="utf8mb4",
-        ssl=ssl_ctx,
-    )
-    await _ensure_table()
-    logger.info("MySQL pool ready (host=%s db=%s)", os.getenv("MYSQL_HOST"), os.getenv("MYSQL_DB"))
+    try:
+        ssl_ctx: ssl.SSLContext | None = None
+        if os.getenv("MYSQL_SSL", "").lower() == "true":
+            ca_path = os.path.join(os.path.dirname(__file__), "aiven-ca.pem")
+            ssl_ctx = ssl.create_default_context()
+            if os.path.exists(ca_path):
+                ssl_ctx.load_verify_locations(ca_path)
+            else:
+                ssl_ctx.check_hostname = False
+                ssl_ctx.verify_mode = ssl.CERT_NONE
+        _pool = await aiomysql.create_pool(
+            host=os.getenv("MYSQL_HOST", "127.0.0.1"),
+            port=int(os.getenv("MYSQL_PORT", "3306")),
+            user=os.getenv("MYSQL_USER", "root"),
+            password=os.getenv("MYSQL_PASSWORD", ""),
+            db=os.getenv("MYSQL_DB", "agent_studio"),
+            autocommit=True,
+            minsize=1,
+            maxsize=5,
+            charset="utf8mb4",
+            ssl=ssl_ctx,
+        )
+        await _ensure_table()
+        logger.info("MySQL pool ready (host=%s db=%s)", os.getenv("MYSQL_HOST"), os.getenv("MYSQL_DB"))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("MySQL init failed: %s — IP guard disabled, agents still work", e)
+        _pool = None
 
 
 async def close_pool() -> None:
@@ -84,7 +90,9 @@ async def _ensure_table() -> None:
 
 async def load_all_blocked() -> set[str]:
     """启动时将数据库中全部封锁 IP 加载到内存集合，避免每次请求走 DB。"""
-    async with _pool.acquire() as conn:  # type: ignore[union-attr]
+    if _pool is None:
+        return set()
+    async with _pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute("SELECT ip FROM ip_blocklist")
             rows = await cur.fetchall()
@@ -101,7 +109,9 @@ async def persist_block(
 
     使用 MySQL 8.0+ 推荐的 AS 别名语法替代废弃的 VALUES() 函数。
     """
-    async with _pool.acquire() as conn:  # type: ignore[union-attr]
+    if _pool is None:
+        return
+    async with _pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
                 """
@@ -118,6 +128,8 @@ async def persist_block(
 
 async def remove_block(ip: str) -> None:
     """从数据库删除封锁记录。"""
-    async with _pool.acquire() as conn:  # type: ignore[union-attr]
+    if _pool is None:
+        return
+    async with _pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute("DELETE FROM ip_blocklist WHERE ip = %s", (ip,))
