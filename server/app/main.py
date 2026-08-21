@@ -39,7 +39,7 @@ logger = logging.getLogger("main")
 async def lifespan(app: FastAPI):
     """应用生命周期：启动时初始化 MySQL 连接池并加载黑名单，关闭时释放连接池。"""
     await init_pool()
-    await guard.load_from_db()
+    # await guard.load_from_db()  # 暂时禁用 IP guard，需要时取消注释
     yield
     await close_pool()
 
@@ -100,20 +100,17 @@ async def ip_guard_middleware(request: Request, call_next):
     2. 检查是否在黑名单内（直接 403）。
     3. 记录请求并判断是否超速（自动加黑并 429）。
     4. 放行时记录 INFO 日志，便于后续分析。
+
+    暂时禁用 —— 需要时取消下面的注释。
     """
-    ip = _get_client_ip(request)
-
-    # 快速内存检查：已封锁直接拒绝，避免触发任何 LLM 调用
-    if guard.is_blocked(ip):
-        return JSONResponse(status_code=403, content={"detail": "Forbidden"})
-
-    # 地理位置 + 速率检测（含自动封锁 + 异步持久化到 MySQL）
-    blocked, reason = await guard.check_and_record(ip)
-    if blocked:
-        status = 403 if "geo:" in reason else 429
-        return JSONResponse(status_code=status, content={"detail": "Forbidden"})
-
-    logger.info("→ %s %s  ip=%s", request.method, request.url.path, ip)
+    # ip = _get_client_ip(request)
+    # if guard.is_blocked(ip):
+    #     return JSONResponse(status_code=403, content={"detail": "Forbidden"})
+    # blocked, reason = await guard.check_and_record(ip)
+    # if blocked:
+    #     status = 403 if "geo:" in reason else 429
+    #     return JSONResponse(status_code=status, content={"detail": "Forbidden"})
+    # logger.info("→ %s %s  ip=%s", request.method, request.url.path, ip)
     return await call_next(request)
 
 
