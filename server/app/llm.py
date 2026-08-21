@@ -19,7 +19,10 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 # 收敛成常量而非散落在各处，切换供应商时只改这里；成本路由（cost.py）
 # 也复用这两个常量，保证「路由目标」与「实际构造」永远一致。
 CHEAP_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
-STRONG_MODEL = os.getenv("OPENAI_STRONG_MODEL", "gpt-5.5")
+# 强档模型。默认用与便宜档同组的 gpt-5.4：token 权限一致、开箱可用，
+# 且 5.4 / 5.4-mini 价差正好 3.33x，路由节省的故事干净可信。
+# 想升到更强档（gpt-5.5 等），配 OPENAI_STRONG_MODEL 覆盖即可。
+STRONG_MODEL = os.getenv("OPENAI_STRONG_MODEL", "gpt-5.4")
 # 语义缓存用的 embedding 模型。text-embedding-3-small 便宜且够用，
 # 命中一次可省下一次（更贵的）completion，投入产出比很高。
 EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small")

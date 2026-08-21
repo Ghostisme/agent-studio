@@ -38,9 +38,14 @@ _PRICING: dict[str, dict[str, float]] = {
     # OpenAI 标准模型（保留，便于切回官方端点）
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
     "gpt-4o": {"input": 2.50, "output": 10.00},
-    # 自建网关模型（moonxi）：便宜档 vs 强档，价差用于凸显路由节省
-    "gpt-5.4-mini": {"input": 0.15, "output": 0.60},
-    "gpt-5.5": {"input": 2.50, "output": 10.00},
+    # 自建网关模型（moonxi）：数值取自网关计费页（USD / 每百万 token），
+    # 便宜档 vs 强档的真实价差正是路由节省的来源，用真实价保证计量可信。
+    "gpt-5.4-mini": {"input": 0.24, "output": 1.44},   # 便宜档：路由默认落点
+    "gpt-5.4": {"input": 0.80, "output": 4.80},        # 强档：与 mini 同组，价差正好 3.33x
+    "gpt-5.5": {"input": 1.60, "output": 9.60},        # 更强档（可选基线）
+    "gpt-5.6-terra": {"input": 0.64, "output": 3.84},
+    "gpt-5.6-sol": {"input": 1.60, "output": 9.60},
+    "gpt-5.3-codex-spark": {"input": 0.56, "output": 4.48},
     # embedding
     "text-embedding-3-small": {"input": 0.02, "output": 0.0},
 }
@@ -101,7 +106,8 @@ def _price_of(model: str) -> dict[str, float]:
         return _PRICING[model]
     name = model.lower()
     cheap_markers = ("mini", "small", "nano", "flash", "lite", "haiku")
-    tier = "gpt-4o-mini" if any(m in name for m in cheap_markers) else "gpt-4o"
+    # 回退锚点用当前网关的便宜/强档，保证未知的自定义模型名也落到合理量级。
+    tier = "gpt-5.4-mini" if any(m in name for m in cheap_markers) else "gpt-5.4"
     return _PRICING[tier]
 
 

@@ -118,13 +118,40 @@ async def run(message: str, history: list[dict]) -> AsyncIterator[StreamEvent]:
 
     # ── 节点 3：生成（用路由选中的模型）──
     yield node_start("generate", f"Generate with {decision.model}")
-    llm = get_llm(streaming=True, model=decision.model)
+
+    # 生成用的模型：默认走路由结果。若强档模型不可用（网关未开通该模型、
+    # 临时 403 等），自动回退到便宜档并如实标注——生产里这种「优雅降级」
+    # 比直接抛错更重要：宁可用便宜模型答上，也不要让整条链路挂掉。
+    used_model = decision.model
     answer = ""
-    async for chunk in llm.astream([("system", _SYSTEM_PROMPT), ("user", query)]):
-        text = chunk.content if isinstance(chunk.content, str) else ""
-        if text:
-            answer += text
-            yield token("generate", text)
+    stream_started = False  # 已产出过 token 后再失败，就不能重来（避免重复输出）
+    try:
+        llm = get_llm(streaming=True, model=decision.model)
+        async for chunk in llm.astream([("system", _SYSTEM_PROMPT), ("user", query)]):
+            text = chunk.content if isinstance(chunk.content, str) else ""
+            if text:
+                stream_started = True
+                answer += text
+                yield token("generate", text)
+    except Exception as exc:  # noqa: BLE001 - 强档不可用 → 回退便宜档
+        # 仅在「还没吐出任何内容」时才安全回退；否则前端已收到半截答案，
+        # 重来会造成重复，故直接把已有内容作为结果。
+        if not stream_started and decision.model != CHEAP_MODEL:
+            used_model = CHEAP_MODEL
+            yield tool_result(
+                "generate",
+                "fallback",
+                f"{decision.model} unavailable ({type(exc).__name__}) — falling back to {CHEAP_MODEL}",
+            )
+            answer = ""
+            llm = get_llm(streaming=True, model=CHEAP_MODEL)
+            async for chunk in llm.astream([("system", _SYSTEM_PROMPT), ("user", query)]):
+                text = chunk.content if isinstance(chunk.content, str) else ""
+                if text:
+                    answer += text
+                    yield token("generate", text)
+        else:
+            raise
     yield node_end("generate")
 
     # 写回缓存，供后续语义相近的查询命中。
@@ -132,8 +159,8 @@ async def run(message: str, history: list[dict]) -> AsyncIterator[StreamEvent]:
 
     # ── 计量：实际成本（选中模型）vs 基线成本（强模型 + 无缓存）──
     in_tok, out_tok = estimate_tokens(query), estimate_tokens(answer)
-    ledger.model_used = decision.model
-    ledger.actual_cost += estimate_cost(decision.model, in_tok, out_tok)
+    ledger.model_used = used_model
+    ledger.actual_cost += estimate_cost(used_model, in_tok, out_tok)
     ledger.baseline_cost = baseline_cost(in_tok, out_tok)
 
     for ev in _meter_events(ledger):
