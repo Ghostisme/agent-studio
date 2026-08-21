@@ -218,26 +218,28 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
 
     返回 text/event-stream，前端用 EventSource 或 fetch+ReadableStream 消费。
     关闭 Nginx 缓冲（X-Accel-Buffering）以保证流式实时性。
+
+    注意：语言检测 + 滥用检测两层防护暂时禁用（需要时取消注释）。
     """
-    ip = _get_client_ip(request)
-
-    # 第一层：语言检测
-    blocked, reason = await check_language_and_block(ip, req.message)
-    if blocked:
-        return JSONResponse(
-            status_code=403,
-            content={"detail": f"Access denied: {reason}"}
-        )
-
-    # 第二层：滥用检测
-    is_abuse, abuse_reason = await detector.check_message(ip, req.message)
-    if is_abuse:
-        logger.warning("🚫 滥用检测封禁 IP=%s  原因=%s", ip, abuse_reason)
-        await guard.manual_block(ip, reason=abuse_reason)
-        return JSONResponse(
-            status_code=403,
-            content={"detail": f"Access denied: {abuse_reason}"}
-        )
+    # ip = _get_client_ip(request)
+    #
+    # # 第一层：语言检测
+    # blocked, reason = await check_language_and_block(ip, req.message)
+    # if blocked:
+    #     return JSONResponse(
+    #         status_code=403,
+    #         content={"detail": f"Access denied: {reason}"}
+    #     )
+    #
+    # # 第二层：滥用检测
+    # is_abuse, abuse_reason = await detector.check_message(ip, req.message)
+    # if is_abuse:
+    #     logger.warning("🚫 滥用检测封禁 IP=%s  原因=%s", ip, abuse_reason)
+    #     await guard.manual_block(ip, reason=abuse_reason)
+    #     return JSONResponse(
+    #         status_code=403,
+    #         content={"detail": f"Access denied: {abuse_reason}"}
+    #     )
 
     return StreamingResponse(
         _event_stream(req),
