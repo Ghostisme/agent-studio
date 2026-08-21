@@ -7,7 +7,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://typescriptlang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **AI Agent Platform** — three production agent patterns built with LangGraph + Next.js, with live execution visualization.
+> **AI Agent Platform** — four production agent patterns built with LangGraph + Next.js, with live execution visualization and cost optimization.
 >
 > **[→ Try the live demo](https://agent-studio-rho.vercel.app)**
 
@@ -21,15 +21,16 @@
 
 Most "AI agent" integrations stop at wrapping a chat completion call. What actually matters in production is **making execution observable, traceable, and controllable** — so you can debug, trust, and iterate on it.
 
-Agent Studio is a full-stack platform that shows exactly that: planning, tool calls, parallel agent execution, and streaming — all rendered live in the UI as structured events.
+Agent Studio is a full-stack platform that shows exactly that: planning, tool calls, parallel agent execution, streaming, and cost optimization — all rendered live in the UI as structured events.
 
-Three agent patterns, one shared streaming protocol:
+Four agent patterns, one shared streaming protocol:
 
 | Mode | Pattern | What it demonstrates |
 |------|---------|----------------------|
 | 🎧 **Customer Support** | RAG + Tool Calling (ReAct) | Knowledge retrieval + real-time tool invocation |
 | 📊 **Data Analysis** | NL → SQL → Execute → Insight | Safe code generation with guardrails |
 | 🔬 **Multi-Agent Research** | Plan → Parallel Research → Synthesize | LangGraph orchestration & parallel agents |
+| 💰 **Cost Optimizer** | Route → Cache → Generate → Meter | Model routing + semantic cache + cost metering |
 
 ---
 
@@ -40,7 +41,8 @@ This architecture directly applies if you're building:
 - **Customer support automation** — an AI bot that queries your knowledge base and calls your business APIs (order status, inventory, CRM)
 - **Data products** — natural language interfaces over your database, with generated SQL, execution, and insight summarization
 - **Research / analysis tools** — multi-agent workflows that break down a task, research in parallel, and synthesize a structured report
-- **Any AI feature where observability matters** — the event streaming protocol works for any agent pattern, not just these three
+- **Production LLM cost optimization** — model routing (cheap vs. capable models by task difficulty), semantic caching (Redis-backed, embedding similarity), and real-time cost metering with baseline comparison
+- **Any AI feature where observability matters** — the event streaming protocol works for any agent pattern, not just these four
 
 > The platform is designed to be extended: adding a new agent mode means writing one handler and registering it in the route table. No frontend change needed.
 

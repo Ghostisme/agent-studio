@@ -26,7 +26,7 @@ from .events import error, done  # noqa: E402
 from .guard import guard  # noqa: E402
 from .lang_guard import check_language_and_block  # noqa: E402
 from .abuse_detector import detector  # noqa: E402
-from .modes import data_agent, research_agent, support_agent  # noqa: E402
+from .modes import cost_agent, data_agent, research_agent, support_agent  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -60,6 +60,7 @@ _MODES = {
     "support": support_agent.run,
     "data": data_agent.run,
     "research": research_agent.run,
+    "cost": cost_agent.run,
 }
 
 
@@ -179,6 +180,11 @@ async def list_modes() -> dict:
                 "key": "research",
                 "name": "Multi-Agent Research",
                 "desc": "Plan → parallel research → synthesize",
+            },
+            {
+                "key": "cost",
+                "name": "Cost-Optimized Agent",
+                "desc": "Model routing + semantic cache + cost metering",
             },
         ]
     }

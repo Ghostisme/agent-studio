@@ -33,7 +33,7 @@ export interface StreamEvent {
 
 /** Agent 模式的元信息，用于渲染模式切换 Tab。 */
 export interface AgentMode {
-  key: "support" | "data" | "research";
+  key: "support" | "data" | "research" | "cost";
   name: string;
   desc: string;
 }
