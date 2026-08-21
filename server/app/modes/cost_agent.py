@@ -30,7 +30,7 @@ from ..cost import (
     route,
 )
 from ..events import StreamEvent, done, final, node_end, node_start, token, tool_call, tool_result
-from ..llm import get_embeddings, get_llm
+from ..llm import CHEAP_MODEL, get_embeddings, get_llm
 
 # 语义缓存命名空间：本模式独占，避免与其他场景交叉命中。
 _NAMESPACE = "cost_agent"
