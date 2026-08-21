@@ -9,7 +9,7 @@
 import type { StreamEvent } from "./types";
 
 /** 后端服务地址。生产部署时通过环境变量注入。 */
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://agent-studio-backend-one.vercel.app";
 
 /**
  * 发起流式对话，逐条回调解析出的事件。
