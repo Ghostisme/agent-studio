@@ -29,12 +29,19 @@ from dataclasses import dataclass, field
 from .llm import CHEAP_MODEL, STRONG_MODEL, get_embeddings
 
 # ── 定价表（USD / 每百万 token）────────────────────────────────
-# 只列 demo 用到的三个模型。生产环境应从配置或供应商计费 API 拉取，
-# 这里硬编码是为了 demo 自洽、可离线演示成本对比。
-# 数值为公开的量级参考，用于「相对节省」演示，不作精确账单依据。
+# 定价表（USD / 每百万 token）。
+# 列出 demo 会用到的模型。自建网关的自定义模型名（gpt-5.x 系列）按量级
+# 归档：含 mini/small 等标记的走便宜档，其余走强档（见 _price_of）。
+# 生产环境应从供应商计费 API 拉取真实价格，这里硬编码是为了 demo 自洽、
+# 可离线演示成本对比。数值为量级参考，不作精确账单依据。
 _PRICING: dict[str, dict[str, float]] = {
+    # OpenAI 标准模型（保留，便于切回官方端点）
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
     "gpt-4o": {"input": 2.50, "output": 10.00},
+    # 自建网关模型（moonxi）：便宜档 vs 强档，价差用于凸显路由节省
+    "gpt-5.4-mini": {"input": 0.15, "output": 0.60},
+    "gpt-5.5": {"input": 2.50, "output": 10.00},
+    # embedding
     "text-embedding-3-small": {"input": 0.02, "output": 0.0},
 }
 
